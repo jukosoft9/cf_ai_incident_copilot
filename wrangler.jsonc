@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "cf-ai-incident-copilot",
+  "main": "src/server.ts",
+  "compatibility_date": "2026-10-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
+  "observability": { "enabled": true },
+
+  // The browser UI. Agent traffic must reach the Worker, everything else is static.
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/agents/*"]
+  },
+
+  // LLM: Workers AI. There is no local simulation, so `npm run dev` also calls Cloudflare.
+  "ai": { "binding": "AI", "remote": true },
+
+  // Memory: one SQLite-backed Durable Object per incident.
+  "durable_objects": {
+    "bindings": [{ "name": "IncidentAgent", "class_name": "IncidentAgent" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["IncidentAgent"] }],
+
+  // Coordination: the durable investigation pipeline.
+  "workflows": [
+    {
+      "name": "incident-investigation",
+      "binding": "INVESTIGATION_WORKFLOW",
+      "class_name": "InvestigationWorkflow"
+    }
+  ],
+
+  "vars": {
+    // How long an investigation waits for a human before it gives up.
+    "APPROVAL_TIMEOUT": "24 hours"
+  }
+}
